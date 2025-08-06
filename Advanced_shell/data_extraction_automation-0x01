@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Data Extraction Automation Script
+# Extracts Pokémon name, height, weight, and type from JSON data
+# Uses jq, awk, and sed for advanced text manipulation
+
+# Define input file
+INPUT_FILE="data.json"
+
+# Check if the JSON file exists
+if [[ ! -f "$INPUT_FILE" ]]; then
+    echo "❌ Error: $INPUT_FILE not found!"
+    echo "Please run the API automation script first to generate the JSON data."
+    exit 1
+fi
+
+# Check if jq is available
+if ! command -v jq >/dev/null 2>&1; then
+    echo "❌ Error: jq is not installed. Please install jq to use this script."
+    exit 1
+fi
+
+# Function to extract and format Pokémon data
+extract_pokemon_data() {
+    # Extract raw data using jq
+    local name height weight type
+    
+    # Extract individual fields using jq
+    name=$(jq -r '.name' "$INPUT_FILE" 2>/dev/null)
+    height=$(jq -r '.height' "$INPUT_FILE" 2>/dev/null)
+    weight=$(jq -r '.weight' "$INPUT_FILE" 2>/dev/null)
+    type=$(jq -r '.types[].type.name' "$INPUT_FILE" 2>/dev/null)
+    
+    # Check if jq extraction was successful
+    if [[ $? -ne 0 ]] || [[ -z "$name" ]] || [[ -z "$height" ]] || [[ -z "$weight" ]] || [[ -z "$type" ]]; then
+        echo "❌ Error: Failed to extract data from $INPUT_FILE"
+        echo "The JSON file may be corrupted or have an unexpected format."
+        exit 1
+    fi
+    
+    # Convert height from decimeters to meters using awk
+    local formatted_height
+    formatted_height=$(awk "BEGIN {printf \"%.1f\", $height/10}")
+    
+    # Convert weight from hectograms to kilograms using awk
+    local formatted_weight
+    formatted_weight=$(awk "BEGIN {printf \"%.0f\", $weight/10}")
+    
+    # Capitalize the first letter of name and type using sed
+    name=$(echo "$name" | sed 's/.*/\u&/')
+    type=$(echo "$type" | sed 's/.*/\u&/')
+    
+    # Format the final output string using the required format
+    echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
+}
+
+# Main execution
+main() {
+    # Extract and format the Pokemon data
+    extract_pokemon_data
+}
+
+# Run the main function
+main "$@"
